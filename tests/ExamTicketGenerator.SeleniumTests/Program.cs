@@ -15,7 +15,10 @@ var webProjectPath = Path.Combine(
 var temporaryDirectory = Path.Combine(
     Path.GetTempPath(),
     $"ExamTicketGenerator-Selenium-{Guid.NewGuid():N}");
-var journalPath = Path.Combine(temporaryDirectory, "journal.xlsx");
+var configuredJournalPath = Environment.GetEnvironmentVariable("SELENIUM_JOURNAL_PATH");
+var journalPath = string.IsNullOrWhiteSpace(configuredJournalPath)
+    ? Path.Combine(repositoryRoot, "src", "ExamTicketGenerator.Web", "journal.xlsx")
+    : Path.GetFullPath(configuredJournalPath, repositoryRoot);
 var port = FindFreePort();
 var baseUrl = $"http://127.0.0.1:{port}";
 
@@ -26,8 +29,9 @@ using var webProcess = StartWebApplication(webProjectPath, baseUrl, journalPath)
 try
 {
     await WaitForApplicationAsync(baseUrl, webProcess);
-    RunSeleniumScenario(baseUrl, journalPath);
-    Console.WriteLine("SELENIUM PASS: студент введён через UI, билет создан, запись появилась в таблице и Excel-журнале.");
+    RunSeleniumScenario(baseUrl, journalPath, temporaryDirectory);
+    Console.WriteLine("SELENIUM PASS: 3 студента добавлены через UI и сохранены в постоянном Excel-журнале.");
+    Console.WriteLine($"Journal: {journalPath}");
     return 0;
 }
 catch (Exception exception)
@@ -47,9 +51,9 @@ finally
     Directory.Delete(temporaryDirectory, recursive: true);
 }
 
-static void RunSeleniumScenario(string baseUrl, string journalPath)
+static void RunSeleniumScenario(string baseUrl, string journalPath, string temporaryDirectory)
 {
-    using var driver = CreateWebDriver(journalPath);
+    using var driver = CreateWebDriver(temporaryDirectory);
     driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(2);
     Thread.Sleep(3_000);
     driver.SwitchTo().NewWindow(WindowType.Tab);
@@ -73,34 +77,41 @@ static void RunSeleniumScenario(string baseUrl, string journalPath)
         () => (driver.FindElement(By.Id("lastNameError")).GetAttribute("textContent") ?? string.Empty).Length > 0,
         "Валидация пустой формы не сработала.");
 
-    var suffix = DateTime.UtcNow.ToString("HHmmss");
-    var lastName = $"Selenium{suffix}";
-    const string firstName = "Student";
+    var expectedRecords = new List<StudentRecord>();
+    var suffix = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
 
-    EnterText(driver, By.Id("lastName"), lastName);
-    EnterText(driver, By.Id("firstName"), firstName);
-    ClickElement(driver, By.Id("addStudentButton"));
+    for (var index = 1; index <= 3; index++)
+    {
+        var lastName = $"Selenium{suffix}-{index}";
+        var firstName = $"Student{index}";
 
-    WaitUntil(
-        () => driver.FindElements(By.Id("ticketResult")).Count == 1,
-        "Результат генерации билета не появился.");
+        EnterText(driver, By.Id("lastName"), lastName);
+        EnterText(driver, By.Id("firstName"), firstName);
+        ClickElement(driver, By.Id("addStudentButton"));
 
-    var result = driver.FindElement(By.Id("ticketResult"));
-    var ticketValue = result.GetAttribute("data-ticket");
-    Assert(int.TryParse(ticketValue, out var ticketNumber), "Номер билета отсутствует в результате.");
-    Assert(ticketNumber is >= 1 and <= 20, "Номер билета находится вне диапазона 1–20.");
+        WaitUntil(
+            () => driver.FindElements(By.CssSelector(
+                $"[data-student-row][data-last-name='{lastName}'][data-first-name='{firstName}']")).Count == 1,
+            $"Студент {lastName} {firstName} не появился в таблице.");
 
-    var matchingRows = driver.FindElements(By.CssSelector(
-        $"[data-student-row][data-last-name='{lastName}'][data-first-name='{firstName}']"));
-    Assert(matchingRows.Count == 1, "Добавленный студент не появился в таблице.");
+        var result = driver.FindElement(By.Id("ticketResult"));
+        var ticketValue = result.GetAttribute("data-ticket");
+        Assert(int.TryParse(ticketValue, out var ticketNumber), "Номер билета отсутствует в результате.");
+        Assert(ticketNumber is >= 1 and <= 20, "Номер билета находится вне диапазона 1–20.");
+
+        expectedRecords.Add(new StudentRecord(lastName, firstName, ticketNumber, DateTime.Now));
+    }
 
     var records = new ExcelJournal(journalPath).ReadAll();
-    Assert(
-        records.Any(record =>
-            record.LastName == lastName &&
-            record.FirstName == firstName &&
-            record.TicketNumber == ticketNumber),
-        "Добавленный через Selenium студент отсутствует в journal.xlsx.");
+    foreach (var expected in expectedRecords)
+    {
+        Assert(
+            records.Any(record =>
+                record.LastName == expected.LastName &&
+                record.FirstName == expected.FirstName &&
+                record.TicketNumber == expected.TicketNumber),
+            $"Студент {expected.LastName} {expected.FirstName} отсутствует в journal.xlsx.");
+    }
 }
 
 static void EnterText(IWebDriver driver, By locator, string value)
@@ -135,14 +146,14 @@ static void ClickElement(IWebDriver driver, By locator)
     ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", element);
 }
 
-static IWebDriver CreateWebDriver(string journalPath)
+static IWebDriver CreateWebDriver(string temporaryDirectory)
 {
     var operaPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Programs",
         "Opera GX",
         "opera.exe");
-    var profilePath = Path.Combine(Path.GetDirectoryName(journalPath)!, "browser-profile");
+    var profilePath = Path.Combine(temporaryDirectory, "browser-profile");
 
     if (File.Exists(operaPath))
     {
