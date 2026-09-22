@@ -113,8 +113,7 @@
                         {
                             <tr data-student-row data-last-name="@record.LastName" data-first-name="@record.FirstName">
                                 <td>
-                                    <strong>@record.LastName</strong>
-                                    <span>@record.FirstName</span>
+                                    <strong class="student-name">@record.LastName @record.FirstName</strong>
                                 </td>
                                 <td><span class="ticket-chip">№ @record.TicketNumber</span></td>
                                 <td><time datetime="@record.RecordedAt.ToString("s")">@record.RecordedAt.ToString("dd.MM.yyyy HH:mm")</time></td>

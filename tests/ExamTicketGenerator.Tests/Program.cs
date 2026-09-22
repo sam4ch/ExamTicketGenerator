@@ -8,6 +8,7 @@ var tests = new (string Name, Action Run)[]
     ("Workbook is created with headers", ExcelJournalTests.EnsureCreatedCreatesWorkbookWithHeader),
     ("Rows are appended without overwriting", ExcelJournalTests.AppendAddsRowsWithoutChangingExistingRows),
     ("A new run continues after existing rows", ExcelJournalTests.NewJournalInstanceAppendsAfterExistingData),
+    ("Selected journal rows can be removed", ExcelJournalTests.RemoveWhereRemovesOnlyMatchingRows),
     ("A locked workbook returns a friendly error", ExcelJournalTests.LockedWorkbookReturnsFriendlyError)
 };
 

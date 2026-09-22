@@ -8,7 +8,7 @@
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)
 ![ASP.NET Core](https://img.shields.io/badge/ASP.NET_Core-Razor_Pages-512BD4?logo=dotnet&logoColor=white)
 ![Selenium](https://img.shields.io/badge/Selenium-4.49-43B02A?logo=selenium&logoColor=white)
-![Tests](https://img.shields.io/badge/unit_tests-7%2F7-brightgreen)
+![Tests](https://img.shields.io/badge/unit_tests-8%2F8-brightgreen)
 ![Labs](https://img.shields.io/badge/labs-1_%26_2-completed-success)
 
 </div>
@@ -73,7 +73,7 @@ dotnet run --project ".\tests\ExamTicketGenerator.SeleniumTests\ExamTicketGenera
 1. запускает веб-приложение на свободном локальном порту;
 2. открывает Opera GX, а при её отсутствии — Edge;
 3. проверяет валидацию пустой формы;
-4. последовательно вводит данные трёх уникальных студентов;
+4. последовательно вводит трёх демонстрационных студентов: Popescu Ana, Ionescu Mihai и Rusu Elena;
 5. отправляет каждую форму и проверяет билеты в диапазоне 1–20;
 6. находит всех студентов в таблице UI;
 7. читает постоянный Excel-журнал и подтверждает сохранение;
@@ -124,7 +124,7 @@ dotnet run --project ".\tests\ExamTicketGenerator.Tests\ExamTicketGenerator.Test
 ```
 
 ```text
-Tests: 7, Passed: 7, Failed: 0
+Tests: 8, Passed: 8, Failed: 0
 ```
 
 Полная проверка:

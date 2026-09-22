@@ -396,6 +396,10 @@ td span {
     display: block;
 }
 
+.student-name {
+    white-space: nowrap;
+}
+
 td > span:not(.ticket-chip),
 td time {
     color: var(--muted);

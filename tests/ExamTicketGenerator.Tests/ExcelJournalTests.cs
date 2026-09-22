@@ -56,6 +56,23 @@ internal static class ExcelJournalTests
         });
     }
 
+    public static void RemoveWhereRemovesOnlyMatchingRows()
+    {
+        RunInTemporaryDirectory(filePath =>
+        {
+            var journal = new ExcelJournal(filePath);
+            journal.Append(new StudentRecord("Keep", "Student", 1, DateTime.Now));
+            journal.Append(new StudentRecord("Remove", "Student", 2, DateTime.Now));
+
+            var removedCount = journal.RemoveWhere(record => record.LastName == "Remove");
+            var records = journal.ReadAll();
+
+            TestAssert.Equal(1, removedCount, "Exactly one matching row must be removed.");
+            TestAssert.Equal(1, records.Count, "One record must remain after cleanup.");
+            TestAssert.Equal("Keep", records[0].LastName, "A non-matching record was removed.");
+        });
+    }
+
     public static void LockedWorkbookReturnsFriendlyError()
     {
         RunInTemporaryDirectory(filePath =>

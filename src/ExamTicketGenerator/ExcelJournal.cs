@@ -102,6 +102,25 @@ public sealed class ExcelJournal
         }
     }
 
+    public int RemoveWhere(Func<StudentRecord, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        lock (_syncRoot)
+        {
+            var records = ReadAll();
+            var remainingRecords = records.Where(record => !predicate(record)).ToArray();
+            var removedCount = records.Count - remainingRecords.Length;
+
+            if (removedCount > 0)
+            {
+                ExecuteWithFriendlyError(() => WriteNewWorkbook(remainingRecords));
+            }
+
+            return removedCount;
+        }
+    }
+
     private static StudentRecord? ReadRecord(XElement row)
     {
         var values = row
@@ -141,7 +160,14 @@ public sealed class ExcelJournal
                 WriteTextEntry(archive, WorksheetPath, BuildWorksheet(records).ToString(SaveOptions.DisableFormatting));
             }
 
-            File.Move(temporaryPath, _filePath);
+            if (File.Exists(_filePath))
+            {
+                File.Replace(temporaryPath, _filePath, destinationBackupFileName: null);
+            }
+            else
+            {
+                File.Move(temporaryPath, _filePath);
+            }
         }
         finally
         {

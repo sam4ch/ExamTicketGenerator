@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.RegularExpressions;
 using ExamTicketGenerator;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
@@ -53,6 +54,14 @@ finally
 
 static void RunSeleniumScenario(string baseUrl, string journalPath, string temporaryDirectory)
 {
+    var journal = new ExcelJournal(journalPath);
+    var removedLegacyRecords = journal.RemoveWhere(IsLegacySeleniumRecord);
+    if (removedLegacyRecords > 0)
+    {
+        Console.WriteLine($"Удалено старых технических записей Selenium: {removedLegacyRecords}");
+    }
+
+    var initialRecordCount = journal.ReadAll().Count;
     using var driver = CreateWebDriver(temporaryDirectory);
     driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(2);
     Thread.Sleep(3_000);
@@ -78,12 +87,17 @@ static void RunSeleniumScenario(string baseUrl, string journalPath, string tempo
         "Валидация пустой формы не сработала.");
 
     var expectedRecords = new List<StudentRecord>();
-    var suffix = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-
-    for (var index = 1; index <= 3; index++)
+    var students = new[]
     {
-        var lastName = $"Selenium{suffix}-{index}";
-        var firstName = $"Student{index}";
+        (LastName: "Popescu", FirstName: "Ana"),
+        (LastName: "Ionescu", FirstName: "Mihai"),
+        (LastName: "Rusu", FirstName: "Elena")
+    };
+
+    foreach (var student in students)
+    {
+        var lastName = student.LastName;
+        var firstName = student.FirstName;
 
         EnterText(driver, By.Id("lastName"), lastName);
         EnterText(driver, By.Id("firstName"), firstName);
@@ -91,7 +105,7 @@ static void RunSeleniumScenario(string baseUrl, string journalPath, string tempo
 
         WaitUntil(
             () => driver.FindElements(By.CssSelector(
-                $"[data-student-row][data-last-name='{lastName}'][data-first-name='{firstName}']")).Count == 1,
+                $"[data-student-row][data-last-name='{lastName}'][data-first-name='{firstName}']")).Count >= 1,
             $"Студент {lastName} {firstName} не появился в таблице.");
 
         var result = driver.FindElement(By.Id("ticketResult"));
@@ -102,17 +116,26 @@ static void RunSeleniumScenario(string baseUrl, string journalPath, string tempo
         expectedRecords.Add(new StudentRecord(lastName, firstName, ticketNumber, DateTime.Now));
     }
 
-    var records = new ExcelJournal(journalPath).ReadAll();
+    var records = journal.ReadAll();
+    Assert(
+        records.Count == initialRecordCount + students.Length,
+        "Количество записей в journal.xlsx не увеличилось на три.");
+
+    var newRecords = records.Skip(initialRecordCount).ToArray();
     foreach (var expected in expectedRecords)
     {
         Assert(
-            records.Any(record =>
+            newRecords.Any(record =>
                 record.LastName == expected.LastName &&
                 record.FirstName == expected.FirstName &&
                 record.TicketNumber == expected.TicketNumber),
             $"Студент {expected.LastName} {expected.FirstName} отсутствует в journal.xlsx.");
     }
 }
+
+static bool IsLegacySeleniumRecord(StudentRecord record) =>
+    Regex.IsMatch(record.LastName, @"^Selenium\d{14}-[1-3]$", RegexOptions.CultureInvariant) &&
+    Regex.IsMatch(record.FirstName, @"^Student[1-3]$", RegexOptions.CultureInvariant);
 
 static void EnterText(IWebDriver driver, By locator, string value)
 {

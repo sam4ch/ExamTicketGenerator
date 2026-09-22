@@ -5,7 +5,7 @@ obj/
 TestResults/
 *.user
 *.suo
-journal.xlsx
+journal*.xlsx
 ~$*.xlsx
 chromedriver/
 msedgedriver/
