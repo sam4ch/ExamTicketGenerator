@@ -1,16 +1,37 @@
-# AI-Assisted Development Log
+# Журнал разработки с использованием ИИ
 
-This file records how artificial intelligence is used during the development of the project.
+Этот проект выполнен совместно с ИИ в соответствии с целью лабораторной работы.
 
-## Initial task analysis
+## 1. Анализ задания
 
-The original requirements were analyzed with AI. C# and .NET 8 were selected because `Console.ReadKey()` supports immediate keyboard input and `ClosedXML` provides a clear API for Excel workbooks.
+ИИ извлёк требования из PDF-плана воркшопа и Word-документа с техническим заданием. Требования были разделены на функциональные, технические и проверочные.
 
-## Planned AI workflow
+## 2. Выбор технологии
 
-1. Convert the assignment into verifiable functional requirements.
-2. Design a small, testable application architecture.
-3. Implement the application incrementally.
-4. Generate and run automated tests.
-5. Review the implementation against every acceptance scenario.
-6. Document corrections made after testing.
+По запросу студента были рассмотрены Python, Java, Node.js, Go и C#. Выбран C# / .NET 8, поскольку `Console.ReadKey()` позволяет обрабатывать `ESC`, а стандартная библиотека .NET позволяет создать файл формата `.xlsx` без дополнительной зависимости основной программы.
+
+## 3. Архитектурный запрос
+
+**Цель:** разделить приложение на небольшие проверяемые компоненты для ввода, валидации, генерации билетов, модели записи и Excel-журнала.
+
+**Результат:** созданы `ConsoleInput`, `InputValidator`, `TicketGenerator`, `StudentRecord` и `ExcelJournal`.
+
+## 4. Запрос на реализацию
+
+**Требования к ИИ:**
+
+- читать ввод посимвольно и обрабатывать `Enter`, `Backspace` и `ESC`;
+- не принимать пустые строки и удалять внешние пробелы;
+- генерировать билет в диапазоне 1–20;
+- создавать `journal.xlsx` с четырьмя заданными столбцами;
+- после каждой записи безопасно заменять файл, сохраняя предыдущие строки;
+- перехватывать ошибки доступа к открытому Excel-файлу;
+- не добавлять требований, отсутствующих в исходном задании.
+
+## 5. Запрос на тестирование
+
+ИИ создал автономные unit-тесты для диапазона билетов, валидации ввода, создания Excel-файла, последовательного добавления строк, продолжения работы после повторного запуска и обработки заблокированного файла. Тестовый раннер не зависит от NuGet, поскольку системная TLS-аутентификация на учебном компьютере не позволяла восстановить xUnit.
+
+## 6. Проверка результата
+
+Код и тесты собираются без сетевых зависимостей. Полная проверка включает автоматические unit-тесты и пять ручных сценариев из исходного технического задания. Найденные при запуске ошибки должны фиксироваться отдельными Git-коммитами с описательными сообщениями.

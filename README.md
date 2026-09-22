@@ -1,23 +1,50 @@
-# Exam Ticket Generator
+# Генератор экзаменационных билетов
 
-Console application for generating exam ticket numbers and recording student data in an Excel journal.
+Консольное приложение на C# и .NET 8. Оно запрашивает фамилию и имя студента, генерирует номер билета от 1 до 20 и немедленно сохраняет запись в `journal.xlsx`.
 
-## Technology
+## Возможности
 
-- C# and .NET 8
-- ClosedXML for `.xlsx` files
-- xUnit for automated tests
+- завершение по `ESC` во время ожидания ввода;
+- проверка пустых полей и удаление пробелов по краям;
+- генерация номера билета от 1 до 20;
+- создание настоящего Excel-файла с заголовками;
+- добавление строк без изменения предыдущих записей;
+- сохранение после каждого студента;
+- понятное сообщение, если файл открыт в Excel;
+- автономные unit-тесты бизнес-логики и Excel-журнала без внешних NuGet-пакетов.
 
-## Planned behavior
+## Требования
 
-The application will request a student's last name and first name, generate a ticket number from 1 to 20, append the result with the current date and time to `journal.xlsx`, and return to the input loop. Pressing `ESC` while waiting for input will close the application.
+- Windows;
+- .NET 8 SDK;
+- VS Code с расширением C# Dev Kit — по желанию.
 
-## Project structure
+## Запуск
 
-- `src/ExamTicketGenerator` - console application
-- `tests/ExamTicketGenerator.Tests` - automated tests
-- `AI_PROMPTS.md` - record of AI-assisted development decisions and prompts
+Откройте терминал в корне проекта, где расположен `ExamTicketGenerator.sln`:
 
-## Status
+```powershell
+dotnet run --project .\src\ExamTicketGenerator\ExamTicketGenerator.csproj
+```
 
-Initial project structure created. Application logic will be implemented in subsequent commits.
+Файл `journal.xlsx` создаётся в текущей папке терминала. Чтобы завершить программу, нажмите `ESC` во время ввода фамилии или имени.
+
+## Тесты
+
+```powershell
+dotnet run --project .\tests\ExamTicketGenerator.Tests\ExamTicketGenerator.Tests.csproj
+```
+
+## Структура
+
+- `src/ExamTicketGenerator` — приложение;
+- `tests/ExamTicketGenerator.Tests` — автономный набор unit-тестов;
+- `AI_PROMPTS.md` — журнал использования искусственного интеллекта.
+
+## Ручная проверка по техническому заданию
+
+1. Ввести трёх студентов и выйти по `ESC`: в Excel должны быть заголовки и три записи.
+2. Запустить приложение снова и ввести ещё двух студентов: старые строки должны сохраниться, всего записей станет пять.
+3. После сохранения студента принудительно закрыть приложение: сохранённая строка должна остаться.
+4. Открыть `journal.xlsx` в Excel и добавить студента: приложение должно попросить закрыть файл и не должно аварийно завершиться.
+5. Нажать `Enter` на пустом поле: приложение должно повторить запрос.
