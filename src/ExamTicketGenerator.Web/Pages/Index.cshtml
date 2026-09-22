@@ -1,0 +1,128 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Генератор билетов";
+}
+
+<section class="hero-section">
+    <div>
+        <span class="eyebrow">Лабораторная работа № 2</span>
+        <h1>Экзаменационный билет<br /><span>за несколько секунд</span></h1>
+        <p class="hero-copy">
+            Введите данные студента — приложение назначит билет и сразу сохранит результат в Excel-журнале.
+        </p>
+    </div>
+    <div class="hero-badge" aria-label="Диапазон билетов">
+        <span>Билеты</span>
+        <strong>1–20</strong>
+        <small>случайный выбор</small>
+    </div>
+</section>
+
+<main class="dashboard-grid">
+    <section class="panel form-panel" aria-labelledby="student-form-title">
+        <div class="panel-heading">
+            <div class="step-number">01</div>
+            <div>
+                <p class="kicker">Новый студент</p>
+                <h2 id="student-form-title">Введите данные</h2>
+            </div>
+        </div>
+
+        @if (Model.GeneratedTicketNumber is not null)
+        {
+            <div class="result-card" id="ticketResult" role="status" data-ticket="@Model.GeneratedTicketNumber">
+                <div class="result-icon">✓</div>
+                <div>
+                    <span>Запись сохранена</span>
+                    <strong>Билет № @Model.GeneratedTicketNumber</strong>
+                </div>
+            </div>
+        }
+
+        @if (Model.JournalError is not null)
+        {
+            <div class="error-card" id="journalError" role="alert">
+                <strong>Не удалось обновить журнал</strong>
+                <span>@Model.JournalError</span>
+            </div>
+        }
+
+        <form method="post" id="studentForm" novalidate>
+            <div class="field-group">
+                <label asp-for="Input.LastName">Фамилия</label>
+                <input asp-for="Input.LastName"
+                       id="lastName"
+                       autocomplete="family-name"
+                       placeholder="Например, Popescu" />
+                <span asp-validation-for="Input.LastName" id="lastNameError" class="validation-message"></span>
+            </div>
+
+            <div class="field-group">
+                <label asp-for="Input.FirstName">Имя</label>
+                <input asp-for="Input.FirstName"
+                       id="firstName"
+                       autocomplete="given-name"
+                       placeholder="Например, Ana" />
+                <span asp-validation-for="Input.FirstName" id="firstNameError" class="validation-message"></span>
+            </div>
+
+            <button type="submit" id="addStudentButton" class="primary-button">
+                <span>Сгенерировать билет</span>
+                <span aria-hidden="true">→</span>
+            </button>
+        </form>
+
+        <p class="form-note">Данные сохраняются в <code>journal.xlsx</code> сразу после отправки формы.</p>
+    </section>
+
+    <section class="panel journal-panel" aria-labelledby="journal-title">
+        <div class="panel-heading journal-heading">
+            <div class="step-number">02</div>
+            <div>
+                <p class="kicker">Excel-журнал</p>
+                <h2 id="journal-title">Последние записи</h2>
+            </div>
+            <div class="record-count" id="recordCount">
+                <strong>@Model.Records.Count</strong>
+                <span>записей</span>
+            </div>
+        </div>
+
+        @if (Model.Records.Count == 0)
+        {
+            <div class="empty-state" id="emptyJournal">
+                <div class="empty-icon">⌁</div>
+                <h3>Журнал пока пуст</h3>
+                <p>Добавьте первого студента с помощью формы.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table id="journalTable">
+                    <thead>
+                        <tr>
+                            <th>Студент</th>
+                            <th>Билет</th>
+                            <th>Дата и время</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var record in Model.Records)
+                        {
+                            <tr data-student-row data-last-name="@record.LastName" data-first-name="@record.FirstName">
+                                <td>
+                                    <strong>@record.LastName</strong>
+                                    <span>@record.FirstName</span>
+                                </td>
+                                <td><span class="ticket-chip">№ @record.TicketNumber</span></td>
+                                <td><time datetime="@record.RecordedAt.ToString("s")">@record.RecordedAt.ToString("dd.MM.yyyy HH:mm")</time></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</main>

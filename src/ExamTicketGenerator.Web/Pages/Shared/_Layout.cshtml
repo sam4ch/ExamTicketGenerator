@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Генератор экзаменационных билетов и Excel-журнал студентов" />
+    <title>@ViewData["Title"] · Exam Ticket Generator</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" asp-page="/Index" aria-label="На главную">
+            <span class="brand-mark">ET</span>
+            <span>
+                <strong>Exam Ticket</strong>
+                <small>Generator</small>
+            </span>
+        </a>
+        <span class="status-pill"><i></i> Система готова</span>
+    </header>
+
+    <div class="page-shell">
+        @RenderBody()
+    </div>
+
+    <footer class="site-footer">
+        <span>Лабораторная работа № 2</span>
+        <span>C# · .NET 8 · Selenium</span>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

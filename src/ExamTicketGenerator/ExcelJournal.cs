@@ -19,6 +19,7 @@ public sealed class ExcelJournal
     ];
 
     private readonly string _filePath;
+    private readonly object _syncRoot = new();
 
     public ExcelJournal(string filePath)
     {
@@ -28,12 +29,15 @@ public sealed class ExcelJournal
 
     public void EnsureCreated()
     {
-        if (File.Exists(_filePath))
+        lock (_syncRoot)
         {
-            return;
-        }
+            if (File.Exists(_filePath))
+            {
+                return;
+            }
 
-        ExecuteWithFriendlyError(() => WriteNewWorkbook([]));
+            ExecuteWithFriendlyError(() => WriteNewWorkbook([]));
+        }
     }
 
     public void Append(StudentRecord record)
@@ -47,16 +51,77 @@ public sealed class ExcelJournal
                 $"Ticket number must be between {TicketGenerator.MinimumTicketNumber} and {TicketGenerator.MaximumTicketNumber}.");
         }
 
-        ExecuteWithFriendlyError(() =>
+        lock (_syncRoot)
+        {
+            ExecuteWithFriendlyError(() =>
+            {
+                if (!File.Exists(_filePath))
+                {
+                    WriteNewWorkbook([record]);
+                    return;
+                }
+
+                AppendToExistingWorkbook(record);
+            });
+        }
+    }
+
+    public IReadOnlyList<StudentRecord> ReadAll()
+    {
+        lock (_syncRoot)
         {
             if (!File.Exists(_filePath))
             {
-                WriteNewWorkbook([record]);
-                return;
+                return [];
             }
 
-            AppendToExistingWorkbook(record);
-        });
+            try
+            {
+                using var stream = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+                var worksheetEntry = archive.GetEntry(WorksheetPath)
+                    ?? throw new InvalidDataException("В файле journal.xlsx отсутствует рабочий лист.");
+
+                using var worksheetStream = worksheetEntry.Open();
+                var worksheet = XDocument.Load(worksheetStream);
+
+                return worksheet
+                    .Descendants(SpreadsheetNamespace + "row")
+                    .Skip(1)
+                    .Select(ReadRecord)
+                    .Where(record => record is not null)
+                    .Cast<StudentRecord>()
+                    .ToArray();
+            }
+            catch (IOException exception)
+            {
+                throw new JournalUnavailableException(
+                    "Не удалось прочитать journal.xlsx. Возможно, файл открыт в Excel.",
+                    exception);
+            }
+        }
+    }
+
+    private static StudentRecord? ReadRecord(XElement row)
+    {
+        var values = row
+            .Elements(SpreadsheetNamespace + "c")
+            .Select(cell => cell.Descendants(SpreadsheetNamespace + "t").FirstOrDefault()?.Value ?? string.Empty)
+            .ToArray();
+
+        if (values.Length < 4 ||
+            !int.TryParse(values[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var ticketNumber) ||
+            !DateTime.TryParseExact(
+                values[3],
+                "yyyy-MM-dd HH:mm:ss",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var recordedAt))
+        {
+            return null;
+        }
+
+        return new StudentRecord(values[0], values[1], ticketNumber, recordedAt);
     }
 
     private void WriteNewWorkbook(IReadOnlyCollection<StudentRecord> records)

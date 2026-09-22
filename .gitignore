@@ -7,3 +7,6 @@ TestResults/
 *.suo
 journal.xlsx
 ~$*.xlsx
+chromedriver/
+msedgedriver/
+se-metadata.json
