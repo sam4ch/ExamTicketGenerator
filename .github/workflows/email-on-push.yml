@@ -1,0 +1,100 @@
+name: Email notification on push
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  send-email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      MAIL_TO: ${{ secrets.MAIL_TO }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+
+    steps:
+      - name: Send commit notification
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import smtplib
+          import ssl
+          from email.message import EmailMessage
+
+          required = ["SMTP_HOST", "SMTP_USERNAME", "SMTP_PASSWORD"]
+          missing = [name for name in required if not os.getenv(name)]
+          if missing:
+              print("Email notification skipped. Missing GitHub Secrets: " + ", ".join(missing))
+              raise SystemExit(0)
+
+          with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as event_file:
+              event = json.load(event_file)
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          actor = os.environ["GITHUB_ACTOR"]
+          event_name = os.environ["GITHUB_EVENT_NAME"]
+          branch = event.get("ref", os.environ.get("GITHUB_REF", "")).removeprefix("refs/heads/")
+          commits = event.get("commits", [])
+          compare_url = event.get("compare", "")
+          mail_to = os.getenv("MAIL_TO") or os.environ["SMTP_USERNAME"]
+          mail_from = os.getenv("MAIL_FROM") or os.environ["SMTP_USERNAME"]
+
+          if commits:
+              subject = f"[{repository}] {len(commits)} commit(s) pushed to {branch}"
+              commit_lines = []
+              for commit in commits:
+                  message = commit.get("message", "").splitlines()[0]
+                  author = commit.get("author", {}).get("name", "unknown")
+                  commit_lines.append(
+                      f"- {commit.get('id', '')[:7]} — {message} ({author})\n  {commit.get('url', '')}"
+                  )
+          else:
+              subject = f"[{repository}] email notification test"
+              commit_lines = ["Workflow was started manually; no commit payload is available."]
+
+          body_lines = [
+              "A push was received by the GitHub repository.",
+              "",
+              f"Repository: {repository}",
+              f"Branch: {branch or 'not specified'}",
+              f"Triggered by: {actor}",
+              f"Event: {event_name}",
+              "",
+              "Commits:",
+              *commit_lines,
+          ]
+          if compare_url:
+              body_lines.extend(["", f"View changes: {compare_url}"])
+
+          message = EmailMessage()
+          message["Subject"] = subject
+          message["From"] = mail_from
+          message["To"] = mail_to
+          message.set_content("\n".join(body_lines))
+
+          host = os.environ["SMTP_HOST"]
+          port = int(os.getenv("SMTP_PORT") or "587")
+          context = ssl.create_default_context()
+
+          if port == 465:
+              with smtplib.SMTP_SSL(host, port, context=context, timeout=30) as server:
+                  server.login(os.environ["SMTP_USERNAME"], os.environ["SMTP_PASSWORD"])
+                  server.send_message(message)
+          else:
+              with smtplib.SMTP(host, port, timeout=30) as server:
+                  server.ehlo()
+                  server.starttls(context=context)
+                  server.ehlo()
+                  server.login(os.environ["SMTP_USERNAME"], os.environ["SMTP_PASSWORD"])
+                  server.send_message(message)
+
+          print(f"Email notification sent to {mail_to}.")
+          PY
